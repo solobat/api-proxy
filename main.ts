@@ -1,8 +1,22 @@
 import { serve } from "https://deno.land/std@0.181.0/http/server.ts";
 
+const baseURLMap = [{
+  test: (path: string) => path.startsWith("/gravity/v3"),
+  baseURL: "https://api-gravity.coinmarketcap.com/",
+}]
+
+function getBaseURL(path: string) {
+  for (const { test, baseURL } of baseURLMap) {
+    if (test(path)) {
+      return baseURL;
+    }
+  }
+  return "https://api.coinmarketcap.com/";
+}
+
 serve(async (req: Request) => {
   const url = new URL(req.url);
-  const targetUrl = url.href.replace(`${url.origin}/`, "");
+  const targetUrl = url.href.replace(`${url.origin}/`, getBaseURL(url.pathname));
   let urlObj: any;
   try {
     urlObj = new URL(targetUrl);
