@@ -1,47 +1,30 @@
 import { serve } from "https://deno.land/std@0.181.0/http/server.ts";
 
-const baseURLMap = [{
-  test: (path: string) => path.startsWith("/gravity/v3"),
-  baseURL: "https://api-gravity.coinmarketcap.com/",
-}]
-
-function getBaseURL(path: string) {
-  for (const { test, baseURL } of baseURLMap) {
-    if (test(path)) {
-      return baseURL;
-    }
-  }
-  return "https://api.coinmarketcap.com/";
-}
-
 serve(async (req: Request) => {
   const url = new URL(req.url);
-  const targetUrl = url.href.replace(`${url.origin}/`, getBaseURL(url.pathname));
-  let urlObj: any;
+  const targetUrl = new URL("https://www.okx.com/api/v5/support/announcements");
+
+  // 保留原始请求的查询参数
+  url.searchParams.forEach((value, key) => {
+    targetUrl.searchParams.append(key, value);
+  });
+
   try {
-    urlObj = new URL(targetUrl);
-  } catch (e) {
-    console.error(e.message);
-  }
-  if (["http:", "https:"].indexOf(urlObj?.protocol) > -1) {
-    let res = await fetch(targetUrl, {
+    const res = await fetch(targetUrl.toString(), {
       headers: req.headers,
       method: req.method,
-      body: req.body,
+      body: req.method !== "GET" && req.method !== "HEAD" ? req.body : undefined,
     });
-    let headers = {};
-    res.headers.forEach((value, key) => {
-      headers[key] = value;
+
+    const headers = new Headers(res.headers);
+    headers.set("Access-Control-Allow-Origin", "*");
+
+    return new Response(res.body, {
+      headers,
+      status: res.status,
     });
-    if (
-      "*" !== headers["Access-Control-Allow-Origin"]?.trim() &&
-      "*" !== headers["access-control-allow-origin"]?.trim()
-    ) {
-      headers["Access-Control-Allow-Origin"] = "*";
-    }
-    return new Response(res.body, { headers, status: res.status });
+  } catch (error) {
+    console.error("代理请求出错:", error);
+    return new Response("代理请求失败", { status: 500 });
   }
-  return new Response(
-    `Usage: ${url.origin}/https://deno.com/deploy/docs/pricing-and-limits`
-  );
 });
